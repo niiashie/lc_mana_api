@@ -14,8 +14,10 @@ use App\Models\Post;
 use App\Models\Order;
 use App\Models\PostComment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Comment;
@@ -53,6 +55,99 @@ class Controller extends BaseController
                  'user' => $user,
                  'message' => "User account successfully created",
           ]);
+    }
+
+    public function resetPassword(Request $request){
+        $request->validate([
+            'id' => 'required|exists:users',
+            'new_password' => 'required',
+           
+        ]); 
+        $id = $request->id;
+        $password = Hash::make($request->new_password);
+
+        User::where('id',$id)->update([
+         
+          'password' => $password
+        ]);
+
+        return response(
+            [  
+              
+                 'message' => "User password successfully reset",
+        ]);
+
+
+    } 
+
+    public function confirmQuestions(Request $request){
+        $request->validate([
+            'email' => 'required|email|exists:users',
+            'phone' => 'required|exists:users',
+            'order' => 'required',
+            'country' => 'required'
+        ]);
+        
+        $user = User::where('email',$request->email)->where('phone',$request->phone)->get();
+        if ($user->first()) { 
+           $id = $user[0]->id;
+           if($user[0]->country == $request->country){
+             $orders = Order::where('user_id',$id)->where('payment_status','paid')->get();
+             if(sizeof($orders) == $request->order){
+                return response([ 
+                    'message' => "valid",
+                    'user_id' => $id
+                   
+               ]);
+             }
+             else{
+                return response([ 
+                    'message' => "invalid",
+                   
+               ]); 
+               }
+           }
+           else{
+            return response([ 
+                'message' => "invalid",
+               
+           ]); 
+           }
+           
+           
+        }else{
+            return response([ 
+                'message' => "invalid",
+               
+           ]); 
+        } 
+    }
+
+    public function submitForgetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users',
+        ]);
+
+        $token = Str::random(64);
+
+        DB::table('password_resets')->insert([
+            'email' => $request->email, 
+            'token' => $token, 
+            //'created_at' => Carbon::now()
+          ]);
+
+        Mail::send('email.forgetPassword', ['token' => $token], function($message) use($request){
+            $message->to($request->email);
+            $message->subject('Reset Password');
+        });
+
+        return response([ 
+            'message' => "We have e-mailed your password reset link!",
+          
+       ]);
+
+       
     }
 
     public function login(Request $request){
@@ -421,6 +516,8 @@ class Controller extends BaseController
         ])->get('https://api.paystack.co/transaction/verify/'.$id);
         return $response;
       }
+
+
   
       public function genereateCheckoutUrl(Request $request){
         

@@ -21,6 +21,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('/register',[Controller::class,'register']);
 Route::post('/login',[Controller::class,'login']);
+Route::post('/security',[Controller::class,'confirmQuestions']);
+Route::post('/resetPassword',[Controller::class,'resetPassword']);
 
 Route::middleware('auth:sanctum')->post('/updateAccountImage',[Controller::class,'updateAccountImage']);
 Route::middleware('auth:sanctum')->post('/updateAccount',[Controller::class,'updateAccount']);
